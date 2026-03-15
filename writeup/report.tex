@@ -10,6 +10,8 @@
 
 \title{Geospatial Climate Data and Economic Outcomes\\
 India State-Month Panel using ERA5 Precipitation}
+\title{Geospatial Climate Data and Economic Outcomes: \\
+A State-Month Panel for India using ERA5 Precipitation}
 \author{Your Name}
 \date{\today}
 
@@ -98,5 +100,95 @@ be rerun with alternative economic outcomes or a finer geography (district-level
 This assignment provides a reproducible geospatial-econometric workflow linking climate variability to
 macroeconomic outcomes. The design is suitable for extension to nonlinear effects, state-specific trends,
 and policy-relevant heterogeneity analyses.
+\section{Research Question and Motivation}
+This project studies whether short-run rainfall shocks, measured from ERA5 reanalysis data,
+affect a state-level economic outcome in India. The assignment objective is to combine:
+(i) geospatial raster processing, (ii) zonal aggregation to administrative units, and
+(iii) panel econometrics with fixed effects.
+
+The economic interpretation is straightforward: rainfall fluctuations can influence agricultural
+production, food supply chains, and inflation dynamics. At monthly frequency, precipitation
+anomalies can generate meaningful transitory variation relevant for macroeconomic outcomes.
+
+\section{Data}
+\subsection{Climate data}
+The climate variable is ERA5 \texttt{total\_precipitation} at daily frequency over India.
+Administrative units are India states (GADM level-1 shapefiles). The analysis period is
+2015--2024, with 2015--2023 as climatology baseline.
+
+\subsection{Geospatial processing}
+The pipeline performs the following steps:
+\begin{enumerate}
+    \item Read ERA5 netCDF as a raster stack.
+    \item Read state boundaries and harmonize coordinate reference systems (CRS).
+    \item Compute zonal means of daily precipitation in each state.
+    \item Convert precipitation from meters to millimeters.
+\end{enumerate}
+
+\section{Climate Shock Construction}
+Let $p_{itd}$ denote daily precipitation (mm) in state $i$ on day $d$ in month $t$.
+Monthly mean precipitation is:
+\begin{equation}
+P_{it} = \frac{1}{D_t}\sum_{d=1}^{D_t} p_{itd},
+\end{equation}
+where $D_t$ is the number of days in month $t$.
+
+Two shock measures are constructed:
+\begin{align}
+\text{Anomaly}_{it} &= P_{it} - \bar{P}_{i,m}, \\
+\text{zShock}_{it} &= \frac{P_{it} - \bar{P}_{i,m}}{\sigma_{i,m}},
+\end{align}
+where $\bar{P}_{i,m}$ and $\sigma_{i,m}$ are the long-run mean and standard deviation for
+state $i$ in calendar month $m$.
+
+As a robustness measure, heavy rainfall days are also computed:
+\begin{equation}
+HR_{it} = \sum_{d=1}^{D_t} \mathbf{1}(p_{itd} > 50\,\text{mm}).
+\end{equation}
+
+\section{Economic Outcome and Panel Merge}
+The code expects a monthly state-level economic dataset with columns:
+\texttt{unit\_id, ym, y\_outcome}. This can represent food inflation, agricultural output,
+or another credible public indicator at comparable frequency and geography.
+
+Climate and economic datasets are merged on state identifier and month.
+
+\section{Empirical Strategy}
+The baseline fixed-effects model is:
+\begin{equation}
+Y_{it} = \beta\,\text{Shock}_{it} + \alpha_i + \gamma_t + \varepsilon_{it},
+\end{equation}
+where $\alpha_i$ are state fixed effects and $\gamma_t$ are month-time fixed effects.
+Standard errors are clustered at the state level.
+
+To study dynamics, local-projection style regressions are estimated:
+\begin{equation}
+Y_{i,t+h} = \beta_h\,\text{Shock}_{it} + \alpha_i + \gamma_t + \varepsilon_{i,t+h},
+\quad h=0,\dots,6.
+\end{equation}
+
+\section{Implementation Notes and Reproducibility}
+All code is provided in \texttt{code/climate\_econ\_assignment.R}. Outputs are written to
+\texttt{outputs/tables/} and \texttt{outputs/figures/}. A small example cleaned file is included in
+\texttt{data/clean/economic\_outcome\_monthly.csv} to illustrate expected schema.
+
+\section{Interpretation Guide for Pre-Doc / Early PhD Level}
+When reporting results, emphasize:
+\begin{itemize}
+    \item \textbf{Identification margin:} variation is within-state over time after removing common
+    aggregate shocks through time fixed effects.
+    \item \textbf{Economic magnitude:} convert coefficients into interpretable units (e.g., effect of
+    a one-standard-deviation rainfall shock).
+    \item \textbf{Robustness:} compare anomaly and z-score definitions, and optionally include
+    heavy-rainfall-day controls.
+    \item \textbf{Limitations:} discuss measurement error in gridded climate data and possible
+    omitted channels that co-move with weather.
+\end{itemize}
+
+\section{Conclusion}
+This assignment delivers a reproducible framework connecting geospatial climate data and
+macroeconomic outcomes in panel form. The workflow is directly extensible to district-level
+analysis, richer outcomes, and advanced designs (e.g., dynamic treatment effects, state-specific
+trends, or nonlinear precipitation impacts).
 
 \end{document}
