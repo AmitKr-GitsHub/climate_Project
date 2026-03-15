@@ -1,0 +1,102 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\onehalfspacing
+
+\title{Geospatial Climate Data and Economic Outcomes\\
+India State-Month Panel using ERA5 Precipitation}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+This assignment studies how rainfall shocks affect economic outcomes using a geospatial panel for
+India. The design follows three steps: (i) aggregate gridded ERA5 climate data to administrative
+boundaries, (ii) construct a climate shock measure from long-run climatology, and (iii) estimate
+panel regressions with fixed effects.
+
+\section{Data}
+\subsection{Climate data}
+The climate variable is daily \texttt{total\_precipitation} from ERA5 reanalysis over India.
+State-level administrative boundaries are taken from GADM (level-1). Raster and vector layers are
+aligned in a common CRS before zonal extraction.
+
+\subsection{Economic outcome}
+The empirical script is outcome-agnostic and accepts any state-month economic panel with columns
+\texttt{unit\_id}, \texttt{ym}, and \texttt{y\_outcome}. Examples include state-level food inflation,
+state-level labor-market outcomes, or state-level agricultural market indicators.
+
+\section{Geospatial processing and zonal statistics}
+Let $p_{itd}$ be daily precipitation in state $i$ on day $d$ in month $t$.
+The pipeline:
+\begin{enumerate}
+  \item loads ERA5 netCDF as a multi-layer raster,
+  \item loads state polygons and transforms them to raster CRS,
+  \item computes area-weighted zonal means for each day and state,
+  \item converts ERA5 precipitation from meters to millimeters.
+\end{enumerate}
+
+\section{Climate shock construction}
+Monthly mean precipitation:
+\begin{equation}
+P_{it} = \frac{1}{D_t}\sum_{d=1}^{D_t} p_{itd},
+\end{equation}
+where $D_t$ is days in month $t$.
+
+Month-specific long-run climatology for each state:
+\begin{equation}
+\bar P_{i,m} = \mathbb{E}[P_{it}\mid \text{calendar month}=m], \qquad
+\sigma_{i,m} = SD(P_{it}\mid \text{calendar month}=m).
+\end{equation}
+
+Two shock variables:
+\begin{align}
+\text{Anomaly}_{it} &= P_{it} - \bar P_{i,m}, \\
+\text{zShock}_{it} &= \frac{P_{it} - \bar P_{i,m}}{\sigma_{i,m}}.
+\end{align}
+
+Robustness variable (extreme precipitation):
+\begin{equation}
+HR_{it}=\sum_{d=1}^{D_t}\mathbf{1}(p_{itd}>50\text{ mm}).
+\end{equation}
+
+\section{Empirical strategy}
+\subsection{Baseline panel model}
+\begin{equation}
+Y_{it} = \beta \cdot \text{Shock}_{it} + \alpha_i + \gamma_t + \varepsilon_{it},
+\end{equation}
+where $\alpha_i$ are state fixed effects and $\gamma_t$ are month-time fixed effects. Standard errors are clustered at the state level.
+
+\subsection{Dynamic response (local projection style)}
+\begin{equation}
+Y_{i,t+h} = \beta_h \cdot \text{zShock}_{it} + \alpha_i + \gamma_t + \varepsilon_{i,t+h},
+\qquad h=0,\dots,6.
+\end{equation}
+This traces the response over six subsequent months.
+
+\section{Identification discussion}
+The identifying variation is within-state over time, net of aggregate month shocks. Key concerns:
+\begin{itemize}
+  \item omitted state-varying confounders (address via robustness and controls where feasible),
+  \item serial correlation in panel errors (cluster by state),
+  \item measurement noise in gridded weather and administrative overlays.
+\end{itemize}
+
+\section{Implementation and reproducibility}
+Code is in \texttt{code/climate\_econ\_assignment.R}. The script writes clean intermediate datasets
+and final outputs in \texttt{data/clean/} and \texttt{outputs/}. This structure ensures the workflow can
+be rerun with alternative economic outcomes or a finer geography (district-level) with minimal changes.
+
+\section{Conclusion}
+This assignment provides a reproducible geospatial-econometric workflow linking climate variability to
+macroeconomic outcomes. The design is suitable for extension to nonlinear effects, state-specific trends,
+and policy-relevant heterogeneity analyses.
+
+\end{document}
